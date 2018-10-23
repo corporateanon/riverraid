@@ -1,0 +1,84 @@
+<svg width={svgWidth} height={svgHeight} xmlns="http://www.w3.org/2000/svg">
+	<CameraViewport svgHeight={svgHeight} camHeight={camHeight} camY={camY}>
+		<path d={leftBankPath} fill="#0000000a" stroke="#aaa" />
+		<path d={rightBankPath} fill="#0000000a" stroke="#aaa" />
+	</CameraViewport>
+</svg>
+
+
+<script>
+	import RR from './lib/riverraid/RR';
+	import CameraViewport from './CameraViewport.html'
+
+	const worldToSVG = (svgHeight, camHeight, svgWidth, camWidth, inx, iny, asPathStr) => {
+		const x = svgWidth / camWidth * inx;
+		const y = svgHeight - svgHeight / camHeight * iny;
+		if (asPathStr) {
+			return x + ' ' + y
+		} else {
+			return { x, y };
+		}
+	}
+
+
+	export default {
+		components: {
+			CameraViewport
+		},
+
+		data: () => ({
+			camWidth: 100,
+			camHeight: 100,
+			svgWidth: 500,
+			svgHeight: 500
+		}),
+
+		computed: {
+			leftBankPath: ({ rlBuffer, camHeight, camWidth, svgHeight, svgWidth }) => {
+				if (!rlBuffer) {
+					return '';
+				}
+				const p = (x, y) => worldToSVG(svgHeight, camHeight, svgWidth, camWidth, x, y, true);
+
+				const start = `M${p(0, 0)}`;
+				const curve = rlBuffer.map(({ xLeft, y }) => `L${p(xLeft, y)}`)
+				const end = `H0 Z`
+				return [start, ...curve, end].join(' ');
+			},
+			rightBankPath: ({ rlBuffer, camHeight, camWidth, svgHeight, svgWidth }) => {
+				if (!rlBuffer) {
+					return '';
+				}
+				const p = (x, y) => worldToSVG(svgHeight, camHeight, svgWidth, camWidth, x, y, true);
+
+				const start = `M${p(camWidth, 0)}`;
+				const curve = rlBuffer.map(({ xRight, y }) => `L${p(xRight, y)}`)
+				const end = `H${svgWidth} Z`
+				return [start, ...curve, end].join(' ');
+			},
+		},
+
+		oncreate() {
+			this.rr = new RR({
+				onChange: ({ rlBuffer, camY }) => {
+					const updater = { camY }
+					const state = this.get();
+					const prevRlBufferBottom = state.rlBufferBottom;
+					if (rlBuffer && (prevRlBufferBottom === undefined || prevRlBufferBottom !== rlBuffer[0].y)) {
+						updater.rlBuffer = rlBuffer;
+						updater.rlBufferBottom = rlBuffer[0].y;
+					}
+					this.set(updater);
+				}
+			});
+			this.rr.start();
+		}
+	}
+
+</script>
+
+<style>
+	h1 {
+		color: purple;
+	}
+</style>
